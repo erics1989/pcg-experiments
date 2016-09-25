@@ -8,17 +8,23 @@ var BASE_INTERVAL = 1
 var renderer = PIXI.autoDetectRenderer(1280, 720);
 var stage = new PIXI.Container();
 var graphics = new PIXI.Graphics();
-
 document.body.appendChild(renderer.view);
-
 stage.addChild(graphics);
-
 
 function init() {
     var points = _.map(_.range(SIZE), function () { return 360; });
     displace_rec(points, 0, SIZE - 1, 360);
     draw(points);
     renderer.render(stage);
+}
+
+function draw(points) {
+    graphics.beginFill(0xFFFFFF);
+    graphics.lineStyle(0);
+    var l = points.length;
+    for (var i = 0; i < l; i++) {
+        graphics.drawRect(i, points[i], 1, 720 - points[i]);
+    }
 }
 
 function displace_rec(points, ax, bx, max) {
@@ -50,15 +56,6 @@ function displace(points, ax, bx, max) {
 
 function lerp(a, b, t) {
     return a + (b - a) * t;
-}
-
-function draw(points) {
-    graphics.beginFill(0xFFFFFF);
-    graphics.lineStyle(0);
-    var l = points.length;
-    for (var i = 0; i < l; i++) {
-        graphics.drawRect(i, points[i], 1, 720 - points[i]);
-    }
 }
 
 init();
