@@ -24,9 +24,9 @@ function init() {
 function displace_rec(points, ax, bx, max) {
     if (bx - ax > BASE_INTERVAL) {
         displace(points, ax, bx, max);
-        var cx = (ax + bx) / 2;
-        displace_rec(points, ax, Math.floor(cx), max * H);
-        displace_rec(points, Math.ceil(cx), bx, max * H);
+        var cx = Math.floor((ax + bx) / 2);
+        displace_rec(points, ax, cx, max * H);
+        displace_rec(points, cx, bx, max * H);
     }
 }
 
@@ -34,18 +34,14 @@ function displace(points, ax, bx, max) {
     var ay = points[ax];
     var by = points[bx];
 
-    var cx = (ax + bx) / 2;
-
+    var cx = Math.floor((ax + bx) / 2);
     var cy = Math.floor((ay + by) / 2);
     cy += Math.floor(Math.random() * (max * 2) - max);
     
-    cx = Math.floor(cx);
     var dist = cx - ax
     for (var i = 0; i < dist; i++) {
         points[ax + i] = lerp(ay, cy, i / dist);
     }
-
-    cx = Math.ceil(cx);
     var dist = bx - cx;
     for (var i = 0; i < dist; i++) {
         points[cx + i] = lerp(cy, by, i / dist);
