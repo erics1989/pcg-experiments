@@ -56,7 +56,7 @@ function draw(points) {
     graphics.beginFill(0xFFFFFF);
     graphics.lineStyle(0);
     var l = points.length;
-    for (var i = 1; i < l; i++) {
+    for (var i = 0; i < l; i++) {
         graphics.drawRect(i, points[i], 1, 720 - points[i]);
     }
 }
