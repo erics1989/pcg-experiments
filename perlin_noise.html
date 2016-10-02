@@ -5,5 +5,43 @@
 <script src="underscore.js"></script>
 <script src="pixi.js"></script>
 <script src="perlin_noise.js"></script>
+<script>
+
+var SIZE = 720;
+
+var renderer = PIXI.autoDetectRenderer(SIZE, SIZE);
+var stage = new PIXI.Container();
+var graphics = new PIXI.Graphics();
+document.body.appendChild(renderer.view);
+stage.addChild(graphics);
+
+function init() {
+    var noise = new Noise2d();
+    var points = {}
+    for (var x = 0; x < SIZE; x++) {
+        points[x] = {};
+        for (var y = 0; y < SIZE; y++) {
+            points[x][y] = noise.calculate(x/(SIZE/8), y/(SIZE/8));
+        }
+    }
+    draw(points);
+    renderer.render(stage);
+}
+
+function draw(points) {
+    graphics.lineStyle(0);
+    for (var x = 0; x < SIZE; x++) {
+        for (var y = 0; y < SIZE; y++) {
+            var h = (points[x][y] + 1) / 2;
+            var hex = PIXI.utils.rgb2hex([h, h, h]);
+            graphics.beginFill(hex);
+            graphics.drawRect(x, y, 1, 1);
+        }
+    }
+}
+
+init();
+
+</script>
 </body>
 
