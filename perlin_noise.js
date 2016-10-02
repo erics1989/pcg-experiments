@@ -1,6 +1,6 @@
 
-var Noise = (function () {
-    var GRID_SIZE = 8;
+var perlin = (function () {
+    var GRID_SIZE = 4;
 
     var vec = function () {
         var theta = Math.random() * 2 * Math.PI;

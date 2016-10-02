@@ -16,7 +16,7 @@ document.body.appendChild(renderer.view);
 stage.addChild(graphics);
 
 function init() {
-    var noise = new Noise.Noise2d();
+    var noise = new perlin.Noise2d();
     var points = {}
     for (var x = 0; x < SIZE; x++) {
         points[x] = {};
