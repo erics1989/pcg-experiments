@@ -1,43 +1,41 @@
 
 erosion = {}
 
+GRADIENT = 64
+INERTIA = 0.5
+
+
 local function lerp(a, b, t)
     return a + (b - a) * t
 end
 
-local function get_unit(x, y)
-    local m = math.sqrt(math.pow(x, 2) + math.pow(y, 2))
-    if m == 0 then
-        return 0, 0
-    else
-        return x / m, y / m
-    end
-end
+function erosion.rain(h, n, flux)
 
-function erosion.rain(h, n)
     for i = 1, n do
         local drop = erosion.drop(h)
         while drop.size > 0 do
-            erosion.step(h, drop)
+            erosion.step(h, drop, flux)
         end
     end
+    return flux
 end
 
-function erosion.drop(elevation, x, y)
-    local x = x or love.math.random(640)
-    local y = y or love.math.random(360)
+function erosion.drop(elevation)
+    local x = x or love.math.random(W)
+    local y = y or love.math.random(H)
     local drop = {
         x = x,
         y = y,
         dx = 0,
         dy = 0,
         size = 1,
-        dirt = 0
+        dirt = 0,
+        speed = 0
     }
     return drop
 end
 
-function erosion.step(h, drop)
+function erosion.step(h, drop, f)
     -- src
     local src_x = drop.x
     local src_y = drop.y
@@ -45,8 +43,8 @@ function erosion.step(h, drop)
     -- src corners
     local src_ax = math.floor(src_x)
     local src_ay = math.floor(src_y)
-    local src_bx = (src_ax + 1 - 1) % 640 + 1
-    local src_by = (src_ay + 1 - 1) % 360 + 1
+    local src_bx = (src_ax + 1 - 1) % W + 1
+    local src_by = (src_ay + 1 - 1) % H + 1
 
     -- src fade
     local src_fx = src_x - src_ax
@@ -59,20 +57,26 @@ function erosion.step(h, drop)
     local dya = h[src_ax][src_ay] - h[src_ax][src_by]
     local dyb = h[src_bx][src_ay] - h[src_bx][src_by]
     local dy = lerp(dya, dyb, src_fx)
-
-    dx, dy = get_unit(dx, dy)
-    dx = (dx + drop.dx) / 2
-    dy = (dy + drop.dy) / 2
+    dx = dx * GRADIENT
+    dy = dy * GRADIENT
+    dx = drop.dx * INERTIA + dx
+    dy = drop.dy * INERTIA + dy
+    local speed = math.sqrt(dx ^ 2, dy ^ 2)
+    if speed > 1 then
+        dx = dx / speed
+        dy = dy / speed
+        speed = 1
+    end
     
     -- dst
-    local dst_x = (src_x + dx - 1) % 640 + 1
-    local dst_y = (src_y + dy - 1) % 360 + 1
+    local dst_x = (src_x + dx - 1) % W + 1
+    local dst_y = (src_y + dy - 1) % H + 1
 
     -- dst corners
     local dst_ax = math.floor(dst_x)
     local dst_ay = math.floor(dst_y)
-    local dst_bx = (dst_ax + 1 - 1) % 640 + 1
-    local dst_by = (dst_ay + 1 - 1) % 360 + 1
+    local dst_bx = (dst_ax + 1 - 1) % W + 1
+    local dst_by = (dst_ay + 1 - 1) % H + 1
 
     -- dst fade
     local dst_fx = dst_x - dst_ax
@@ -92,16 +96,20 @@ function erosion.step(h, drop)
     local dh = dst_h - src_h
     if dh < 0 then
         -- dn
-        local dirt = math.min(-dh, drop.size - drop.dirt)
-        drop.dirt = drop.dirt + dirt
+        local dirt = drop.dirt - drop.size * speed
+        if dirt < 0 then
+            -- erode
+            dirt = math.max(dh, dirt)
+        end
+        drop.dirt = drop.dirt - dirt
         h[src_ax][src_ay] =
-            h[src_ax][src_ay] - dirt * (1 - src_fx) * (1 - src_fy)
+            h[src_ax][src_ay] + dirt * (1 - src_fx) * (1 - src_fy)
         h[src_ax][src_by] =
-            h[src_ax][src_by] - dirt * (1 - src_fx) * src_fy
+            h[src_ax][src_by] + dirt * (1 - src_fx) * src_fy
         h[src_bx][src_ay] =
-            h[src_bx][src_ay] - dirt * src_fx * (1 - src_fy)
+            h[src_bx][src_ay] + dirt * src_fx * (1 - src_fy)
         h[src_bx][src_by] =
-            h[src_bx][src_by] - dirt * src_fx * src_fy
+            h[src_bx][src_by] + dirt * src_fx * src_fy
     else
         -- up
         local dirt = math.min(dh, drop.dirt)
@@ -115,10 +123,25 @@ function erosion.step(h, drop)
         h[src_bx][src_by] =
             h[src_bx][src_by] + dirt * src_fx * src_fy
     end
+
     drop.x = dst_x
     drop.y = dst_y
     drop.dx = dx
     drop.dy = dy
     drop.size = drop.size - 0.01
+    drop.speed = speed
+    if speed < 0.05 then
+        local dirt = drop.dirt
+        drop.size = 0
+        drop.dirt = 0
+        h[src_ax][src_ay] =
+            h[src_ax][src_ay] + dirt * (1 - src_fx) * (1 - src_fy)
+        h[src_ax][src_by] =
+            h[src_ax][src_by] + dirt * (1 - src_fx) * src_fy
+        h[src_bx][src_ay] =
+            h[src_bx][src_ay] + dirt * src_fx * (1 - src_fy)
+        h[src_bx][src_by] =
+            h[src_bx][src_by] + dirt * src_fx * src_fy
+    end
 end
 
