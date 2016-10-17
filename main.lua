@@ -1,7 +1,9 @@
 
+inspect = require("inspect")
 require "perlin"
 require "fractal"
 require "erosion"
+require "name"
 inspect = require("inspect")
 
 W = 1280 / 2
@@ -40,6 +42,16 @@ function game.init()
         end
     end
 
+    generate_data()
+
+    _state.print_map = true
+    _state.print_data = false
+    _state.data = _state.elevation
+
+    _state.generate_name = name.init("japanese_cities")
+end
+
+function generate_data()
     local n = fractal.noise(perlin.noise())
     _state.moisture = {}
     for x, c in ipairs(_state.map) do
@@ -63,8 +75,6 @@ function game.init()
             _state.temperature[x][y] = v
         end
     end
-
-    _state.current = _state.elevation
 end
 
 function love.load()
@@ -73,17 +83,23 @@ function love.load()
 end
 
 function love.keypressed(k)
-    if k == "e" then
+    if k == "q" then
         erosion.rain(_state.elevation, 10000)
         print("eroded")
+    elseif k == "w" then
+        generate_data()
+    elseif k == "a" then
+        _state.print_map = not _state.print_map
+    elseif k == "s" then
+        _state.print_data = not _state.print_data
     elseif k == "1" then
-        _state.current = _state.elevation
+        _state.data = _state.elevation
     elseif k == "2" then
-        _state.current = _state.moisture
-        print("moisture")
+        _state.data = _state.moisture
     elseif k == "3" then
-        _state.current = _state.temperature
-        print("temperature")
+        _state.data = _state.temperature
+    elseif k == "space" then
+        print(_state.generate_name())
     end
 end
 
@@ -95,12 +111,17 @@ end
 function love.draw()
     for x = 1, W do
         for y = 1, H do
-            draw_space(x, y)
+            if _state.print_map then
+                print_map(x, y)
+            end
+            if _state.print_data then
+                print_data(x, y)
+            end
         end
     end
 end
 
-function draw_space(x, y)
+function print_map(x, y)
     local h = _state.elevation[x][y]
     local t = _state.temperature[x][y]
     local m = _state.moisture[x][y]
@@ -144,18 +165,14 @@ function draw_space(x, y)
     else
         c1, c2, c3 = 40, 80, 120
     end
-
-    if _state.current ~= _state.elevation then
-        local z = _state.current[x][y]
-        color = {
-            lerp(color[1], 255, z),
-            lerp(color[2], 255, z),
-            lerp(color[3], 0, z),
-        }
-
-    end
-
     love.graphics.setColor(c1, c2, c3)
+    love.graphics.rectangle("fill", (x - 1) * 2, (y - 1) * 2, 2, 2)
+end
+
+function print_data(x, y)
+    local z = _state.data[x][y]
+    local c1, c2, c3, a = 255, 255, 255, z * 255
+    love.graphics.setColor(c1, c2, c3, a)
     love.graphics.rectangle("fill", (x - 1) * 2, (y - 1) * 2, 2, 2)
 end
 
