@@ -81,11 +81,6 @@ function love.keypressed(k)
         _state.attr = _state.temperature
 end
 
-function love.mousepressed(px, py, b)
-    local x = math.floor(px / 2) + 1
-    local y = math.floor(py / 2) + 1
-end
-
 function love.draw()
     for x = 1, W do
         for y = 1, H do
