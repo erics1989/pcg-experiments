@@ -2,11 +2,9 @@
 inspect = require("inspect")
 require "perlin"
 require "fractal"
-require "erosion"
 require "name"
-inspect = require("inspect")
 
-W = 1280 / 2
+W = 720 / 2
 H = 720 / 2
 
 SIZE = 720 / 2
@@ -24,57 +22,45 @@ end
 function game.init()
     _state = {}
     
-    _state.map = {}
-    for x = 1, W do
-        _state.map[x] = {}
-        for y = 1, H do
-            _state.map[x][y] = {}
-        end
+    local f = function (n, x, y)
+        return (n(x / (SIZE / 4), y / (SIZE / 4)) + 1) / 2
     end
+    _state.elevation = generate_noise(f, W, H)
 
-    local n = fractal.noise(perlin.noise())
-    _state.elevation = {}
-    for x, c in ipairs(_state.map) do
-        _state.elevation[x] = {}
-        for y, _ in ipairs(c) do
-            local v = (n(x / (SIZE / 4), y / (SIZE / 4)) + 1) / 2
-            _state.elevation[x][y] = v
-        end
-    end
-
-    generate_data()
+    generate_attr()
 
     _state.print_map = true
-    _state.print_data = false
-    _state.data = _state.elevation
+    _state.print_attr_map = false
+    _state.attr = _state.elevation
 
     _state.generate_name = name.init("japanese_cities")
 end
 
-function generate_data()
+function generate_noise(bias, w, h)
     local n = fractal.noise(perlin.noise())
-    _state.moisture = {}
-    for x, c in ipairs(_state.map) do
-        _state.moisture[x] = {}
-        for y, _ in ipairs(c) do
-            local v1 = (n(x / (SIZE / 4), y / (SIZE / 4)) + 1) / 2
-            local v = v1
-            _state.moisture[x][y] = v
+    local a = {}
+    for x = 1, w do
+        a[x] = {}
+        for y = 1, h do
+            a[x][y] = bias(n, x, y)
         end
     end
+    return a
+end
 
-    local n = fractal.noise(perlin.noise())
-    _state.temperature = {}
-    for x, c in ipairs(_state.map) do
-        _state.temperature[x] = {}
-        for y, _ in ipairs(c) do
-            local v1 = (n(x / (SIZE / 4), y / (SIZE / 4)) + 1) / 2
-            local v2 = 1 - math.max(_state.elevation[x][y], 0.5)
-            local v3 = fade(1 - (math.abs(y - (H / 2)) / (H / 2)))
-            local v = v1 * 0.25 + v2 * 0.25 + v3 * .5
-            _state.temperature[x][y] = v
-        end
+function generate_attr()
+    local f = function (n, x, y)
+        return (n(x / (SIZE / 4), y / (SIZE / 4)) + 1) / 2
     end
+    _state.moisture = generate_noise(f, W, H)
+
+    local f = function (n, x, y)
+        local v1 = (n(x / (SIZE / 4), y / (SIZE / 4)) + 1) / 2
+        local v2 = 1 - math.max(_state.elevation[x][y], 0.5)
+        local v3 = fade(1 - (math.abs(y - (H / 2)) / (H / 2)))
+        return v1 * 0.25 + v2 * 0.25 + v3 * .5
+    end
+    _state.temperature = generate_noise(f, W, H)
 end
 
 function love.load()
@@ -83,24 +69,16 @@ function love.load()
 end
 
 function love.keypressed(k)
-    if k == "q" then
-        erosion.rain(_state.elevation, 10000)
-        print("eroded")
-    elseif k == "w" then
-        generate_data()
-    elseif k == "a" then
+    if k == "a" then
         _state.print_map = not _state.print_map
     elseif k == "s" then
-        _state.print_data = not _state.print_data
+        _state.print_attr_map = not _state.print_attr_map
     elseif k == "1" then
-        _state.data = _state.elevation
+        _state.attr = _state.elevation
     elseif k == "2" then
-        _state.data = _state.moisture
+        _state.attr = _state.moisture
     elseif k == "3" then
-        _state.data = _state.temperature
-    elseif k == "space" then
-        print(_state.generate_name())
-    end
+        _state.attr = _state.temperature
 end
 
 function love.mousepressed(px, py, b)
@@ -114,8 +92,8 @@ function love.draw()
             if _state.print_map then
                 print_map(x, y)
             end
-            if _state.print_data then
-                print_data(x, y)
+            if _state.print_attr_map then
+                print_attr_map(x, y)
             end
         end
     end
@@ -169,8 +147,8 @@ function print_map(x, y)
     love.graphics.rectangle("fill", (x - 1) * 2, (y - 1) * 2, 2, 2)
 end
 
-function print_data(x, y)
-    local z = _state.data[x][y]
+function print_attr_map(x, y)
+    local z = _state.attr[x][y]
     local c1, c2, c3, a = 255, 255, 255, z * 255
     love.graphics.setColor(c1, c2, c3, a)
     love.graphics.rectangle("fill", (x - 1) * 2, (y - 1) * 2, 2, 2)
