@@ -79,6 +79,7 @@ function love.keypressed(k)
         _state.attr = _state.moisture
     elseif k == "3" then
         _state.attr = _state.temperature
+    end
 end
 
 function love.draw()
