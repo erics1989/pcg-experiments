@@ -4,7 +4,7 @@ require "perlin"
 require "fractal"
 require "name"
 
-W = 720 / 2
+W = 1280 / 2
 H = 720 / 2
 
 SIZE = 720 / 2
