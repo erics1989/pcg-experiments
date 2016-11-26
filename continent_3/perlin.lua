@@ -7,8 +7,6 @@ end
 
 perlin = {}
 
-local SIZE = 256
-
 local function lerp(a, b, t)
     return a + (b - a) * t
 end
@@ -22,23 +20,23 @@ local function vector_rng()
     return { x = math.cos(a), y = math.sin(a) }
 end
 
-function perlin.noise_f()
+function perlin.noise_f(w, h)
     local vectors = {}
-    for x = 1, SIZE do
+    for x = 1, w do
         vectors[x] = {}
-        for y = 1, SIZE do
+        for y = 1, h do
             vectors[x][y] = vector_rng()
         end
     end
     local dot = function (cx, cy, x, y)
         local dx = x - cx
         local dy = y - cy
-        local v = vectors[(cx - 1) % SIZE + 1][(cy - 1) % SIZE + 1]
+        local v = vectors[(cx - 1) % w + 1][(cy - 1) % h + 1]
         return dx * v.x + dy * v.y
     end
-    local f = function (x, y)
-        x = (x - 1) % SIZE + 1
-        y = (y - 1) % SIZE + 1
+    local noise_f = function (x, y)
+        x = (x - 1) % w + 1
+        y = (y - 1) % h + 1
         local ax = math.floor(x)
         local ay = math.floor(y)
         local bx = ax + 1
@@ -54,6 +52,6 @@ function perlin.noise_f()
         local n = glue.lerp(na, nb, curvex)
         return n
     end
-    return f
+    return noise_f
 end
 

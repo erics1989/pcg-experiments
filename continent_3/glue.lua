@@ -1,50 +1,15 @@
 
 glue = {}
 
-function glue.dist_e(a, b)
-    return math.sqrt((b.x - a.x) ^ 2 + (b.y - a.y) ^ 2)
+function glue.dist_e(ax, ay, bx, by)
+    return math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
 end
 
-glue.list = {}
-
--- list, copy
-function glue.list.copy(a)
-    local b = {}
-    for i, v in ipairs(a) do
-        b[i] = v
-    end
-    return b
+function glue.lerp(a, b, t)
+    return a + (b - a) * t
 end
 
--- list, non-destructive sort
-function glue.list.sort(a, compare)
-    local b = glue.list.copy(a)
-    local f = function (a, b)
-        return compare(a, b) < 0
-    end
-    table.sort(b, f)
-    return b
-end
-
--- list, max
-function glue.list.max(a, compare)
-    local x = a[1]
-    for _, y in ipairs(a) do
-        if compare(x, y) < 0 then
-            x = y
-        end
-    end
-    return x
-end
-
--- list, min
-function glue.list.min(a, compare)
-    local x = a[1]
-    for _, y in ipairs(a) do
-        if compare(x, y) > 0 then
-            x = y
-        end
-    end
-    return x
+function glue.curve(t)
+    return t * t * t * (t * (t * 6 - 15) + 10)
 end
 
