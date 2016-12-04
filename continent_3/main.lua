@@ -55,7 +55,9 @@ RIVER_MAX = 100
 
 function init()
     _option = {}
-    _option.draw = draw_satellite_map
+    _option.draw = draw_map
+    _option.color = color_elevation
+    _option_draw_branches = false
 
     generate_everything()
 end
@@ -84,7 +86,9 @@ function generate_everything()
     generate_centers_and_prefectures()
     generate_prefecture_map()
     generate_branches()
+    generate_branch_map()
 
+    _state.pivot = 0
     print("done!")
 end
 
@@ -178,6 +182,17 @@ function generate_branches()
         table.insert(_state.branches, branch)
         update_branch_dist_map(branch)
         generate_branch_score_map()
+    end
+end
+
+function generate_branch_map()
+    print("generating branch map")
+    local f = function (x, y)
+        return false
+    end
+    _state.branch_map = generate_map(f)
+    for _, branch in ipairs(_state.branches) do
+        _state.branch_map[branch.x][branch.y] = branch
     end
 end
 
@@ -279,26 +294,36 @@ end
 --
 
 function love.load()
-    love.window.setMode(1280, 760)
-    local font = love.graphics.newFont("6x12.bdf")
+    love.window.setMode(1280, 720)
+    local font = love.graphics.newFont("Inconsolata.otf", 24)
     love.graphics.setFont(font)
     init()
 end
 
 function love.keypressed(k)
     if k == "1" then
-        _option.draw = draw_elevation_map
+        _option.color = color_elevation
     elseif k == "2" then
-        _option.draw = draw_temperature_map
+        _option.color = color_temperature
     elseif k == "3" then
-        _option.draw = draw_rain_map
+        _option.color = color_rain
     elseif k == "4" then
-        _option.draw = draw_river_map
-    elseif k == "9" then
-        _option.draw = draw_satellite_map
-    elseif k == "0" then
-        _option.draw = draw_political_map
+        _option.color = color_river
+    elseif k == "5" then
+        _option.color = color_satellite
+    elseif k == "6" then
+        _option.color = color_political
+    elseif k == "q" then
+        _option.draw = draw_map
+    elseif k == "w" then
+        _option.draw = draw_globe
+    elseif k == "e" then
+        _option.draw_branches = not _option.draw_branches
     end
+end
+
+function love.update(t)
+    _state.pivot = _state.pivot + 16 * t
 end
 
 function love.mousepressed(px, py, k)
@@ -320,157 +345,189 @@ function love.draw()
     _option.draw()
 end
 
-function draw_elevation_map()
+function draw_map()
     for x = 1, W do
         for y = 1, H do
-            local color = {}
-            local a = _state.elevation_map[x][y]
-            color[1] = glue.lerp(9, 207, a)
-            color[2] = glue.lerp(41, 179, a)
-            color[3] = glue.lerp(99, 148, a)
-            draw_point(color, x, y)
-        end
-    end
-end
-
-function draw_temperature_map()
-    for x = 1, W do
-        for y = 1, H do
-            local color = {}
-            local a = _state.temperature_map[x][y]
-            color[1] = glue.lerp(0, 255, a)
-            color[2] = 0
-            color[3] = glue.lerp(255, 0, a)
-            draw_point(color, x, y)
-        end
-    end
-end
-
-function draw_rain_map()
-    for x = 1, W do
-        for y = 1, H do
-            local color = {}
-            local a = _state.rain_map[x][y]
-            color[1] = glue.lerp(62, 103, a)
-            color[2] = glue.lerp(46, 240, a)
-            color[3] = glue.lerp(0, 89, a)
-            draw_point(color, x, y)
-        end
-    end
-end
-
-function draw_river_map()
-    local river_color = { 100, 122, 55 }
-    for x = 1, W do
-        for y = 1, H do
-            local color = {}
-            local a = _state.elevation_map[x][y]
-            if a > WATER_LEVEL then
-                color[1] = 79
-                color[2] = 33
-                color[3] = 48
-                draw_point(color, x, y)
-
-                local a = _state.river_map[x][y] / 16
-                river_color[4] = glue.lerp(0, 255, a)
-                color[1] = glue.lerp(170, 100, a)
-                color[2] = glue.lerp(58, 122, a)
-                color[3] = glue.lerp(87, 255, a)
-                draw_point(color, x, y)
-            else
-                
+            local color = _option.color(x, y)
+            if color then
+                local px = (x - 1) * SCALE
+                local py = (y - 1) * SCALE + 40
+                love.graphics.setColor(color)
+                love.graphics.rectangle("fill", px, py, SCALE, SCALE)
             end
         end
     end
-end
-
-function draw_satellite_map()
-    for x = 1, W do
-        for y = 1, H do
-            local color
-            local a = _state.elevation_map[x][y]
-            local b = _state.temperature_map[x][y]
-            if a > WATER_LEVEL then
-                local i = _state.biome_map[x][y]
-                color = biome_color[i]
-                if _state.discrete_river_map[x][y] ~= math.huge then
-                    if b > 0.25 then
-                        color = { 79, 123, 235 }
-                    else
-                        color = { 204, 203, 188 }
-                    end
-                end
-            elseif a > WATER_LEVEL - 0.05 then
-                if b > 0.25 then
-                    color = { 79, 123, 235 }
-                else
-                    color = { 204, 203, 188 }
-                end
-            else
-                color = { 20, 59, 129 }
-            end
-            local z = 1 + 0.5 * ((a * 2) - 1)
-            color = {
-                color[1] * z,
-                color[2] * z,
-                color[3] * z,
-            }
-            draw_point(color, x, y)
+    if _option.draw_branches then
+        love.graphics.setColor(255, 255, 255)
+        for _, branch in ipairs(_state.branches) do
+            local px = (branch.x - 1) * SCALE
+            local py = (branch.y - 1) * SCALE + 40
+            love.graphics.rectangle("fill", px, py, SCALE, SCALE)
+            love.graphics.print(branch.name, px + 4, py + 4)
         end
     end
 end
 
-function draw_political_map()
-    for x = 1, W do
+function draw_globe()
+    for x = 1, W/2 do
         for y = 1, H do
-            local color
-            local a = _state.elevation_map[x][y]
-            local b = _state.temperature_map[x][y]
-            if a > WATER_LEVEL then
-                local prefecture = _state.prefecture_map[x][y]
-                color = prefecture_color[prefecture]
-                
-                if _state.discrete_river_map[x][y] ~= math.huge then
-                    if b > 0.25 then
-                        color = { 79, 123, 235 }
-                    else
-                        color = { 204, 203, 188 }
-                    end
-                end
-
-                local c1 = _state.prefecture_map[x][y]
-                if c1 then
-                    local p2 = get_point(x + 1, y)
-                    local c2 = _state.prefecture_map[p2.x][p2.y]
-                    local p3 = get_point(x, y + 1)
-                    local c3 = _state.prefecture_map[p3.x][p3.y]
-                    if c1 ~= c2 or c1 ~= c3 then
-                        color = { 255, 255, 255 }
-                    end
-                end
-
-            elseif a > WATER_LEVEL - 0.05 then
-                if b > 0.25 then
-                    color = { 79, 123, 235 }
-                else
-                    color = { 204, 203, 188 }
-                end
-            else
-                color = { 20, 59, 129 }
+            local dx = math.floor((x + _state.pivot - 1) % W + 1)
+            local color = _option.color(dx, y)
+            if color then
+                local phi = resize(1, W, 0, 2 * math.pi, x)
+                local theta = resize(1, H, 0, math.pi, H - y + 1)
+                local cx, cy, cz = spherical_to_cartesian(theta, phi)
+                cx = -cx
+                local px = cx * H + W
+                local py = cy * H + H + 40
+                love.graphics.setColor(color)
+                love.graphics.rectangle("fill", px, py, 4, 4)
             end
-            local z = 1 + 0.5 * ((a * 2) - 1)
-            color = {
-                color[1] * z,
-                color[2] * z,
-                color[3] * z,
-            }
-            draw_point(color, x, y)
         end
     end
-    for _, branch in ipairs(_state.branches) do
-        draw_point({ 255, 255, 255 }, branch.x, branch.y)
-        draw_text(branch.name, { 255, 255, 255 }, branch.x, branch.y)
+    if _option.draw_branches then
+        for x = 1, W/2 do
+            for y = 1, H do
+                local dx = math.floor((x + _state.pivot - 1) % W + 1)
+                local branch = _state.branch_map[dx][y]
+                if branch then
+                    local phi = resize(1, W, 0, 2 * math.pi, x)
+                    local theta = resize(1, H, 0, math.pi, H - y + 1)
+                    local cx, cy, cz = spherical_to_cartesian(theta, phi)
+                    cx = -cx
+                    local px = cx * H + W
+                    local py = cy * H + H + 40
+                    love.graphics.setColor(255, 255, 255)
+                    love.graphics.rectangle("fill", px, py, 4, 4)
+                    love.graphics.print(branch.name, px + 4, py + 4)
+                end
+            end
+        end
+
     end
+end
+
+function color_elevation(x, y)
+    local color = {}
+    local a = _state.elevation_map[x][y]
+    color[1] = glue.lerp(9, 207, a)
+    color[2] = glue.lerp(41, 179, a)
+    color[3] = glue.lerp(99, 148, a)
+    return color
+end
+
+function color_temperature(x, y)
+    local color = {}
+    local a = _state.temperature_map[x][y]
+    color[1] = glue.lerp(0, 255, a)
+    color[2] = 0
+    color[3] = glue.lerp(255, 0, a)
+    return color
+end
+
+function color_rain(x, y)
+    local color = {}
+    local a = _state.rain_map[x][y]
+    color[1] = glue.lerp(62, 103, a)
+    color[2] = glue.lerp(46, 240, a)
+    color[3] = glue.lerp(0, 89, a)
+    return color
+end
+
+local river_color = { 100, 122, 55 }
+
+function color_river(x, y)
+    local color = {}
+    local a = _state.elevation_map[x][y]
+    if a > WATER_LEVEL then
+        color[1] = 79
+        color[2] = 33
+        color[3] = 48
+
+        local a = _state.river_map[x][y] / 16
+        river_color[4] = glue.lerp(0, 255, a)
+        color[1] = glue.lerp(170, 100, a)
+        color[2] = glue.lerp(58, 122, a)
+        color[3] = glue.lerp(87, 255, a)
+        return color
+    end
+end
+
+function color_satellite(x, y)
+    local color
+    local a = _state.elevation_map[x][y]
+    local b = _state.temperature_map[x][y]
+    if a > WATER_LEVEL then
+        local i = _state.biome_map[x][y]
+        color = biome_color[i]
+        if _state.discrete_river_map[x][y] ~= math.huge then
+            if b > 0.25 then
+                color = { 79, 123, 235 }
+            else
+                color = { 204, 203, 188 }
+            end
+        end
+    elseif a > WATER_LEVEL - 0.05 then
+        if b > 0.25 then
+            color = { 79, 123, 235 }
+        else
+            color = { 204, 203, 188 }
+        end
+    else
+        color = { 20, 59, 129 }
+    end
+    local z = 1 + 0.5 * ((a * 2) - 1)
+    color = {
+        color[1] * z,
+        color[2] * z,
+        color[3] * z,
+    }
+    return color
+end
+
+function color_political(x, y)
+    local color
+    local a = _state.elevation_map[x][y]
+    local b = _state.temperature_map[x][y]
+    if a > WATER_LEVEL then
+        local prefecture = _state.prefecture_map[x][y]
+        color = prefecture_color[prefecture]
+        
+        if _state.discrete_river_map[x][y] ~= math.huge then
+            if b > 0.25 then
+                color = { 79, 123, 235 }
+            else
+                color = { 204, 203, 188 }
+            end
+        end
+
+        local c1 = _state.prefecture_map[x][y]
+        if c1 then
+            local p2 = get_point(x + 1, y)
+            local c2 = _state.prefecture_map[p2.x][p2.y]
+            local p3 = get_point(x, y + 1)
+            local c3 = _state.prefecture_map[p3.x][p3.y]
+            if c1 ~= c2 or c1 ~= c3 then
+                color = { 255, 255, 255 }
+            end
+        end
+
+    elseif a > WATER_LEVEL - 0.05 then
+        if b > 0.25 then
+            color = { 79, 123, 235 }
+        else
+            color = { 204, 203, 188 }
+        end
+    else
+        color = { 20, 59, 129 }
+    end
+    local z = 1 + 0.5 * ((a * 2) - 1)
+    color = {
+        color[1] * z,
+        color[2] * z,
+        color[3] * z,
+    }
+    return color
 end
 
 function draw_point(color, x, y)
@@ -485,5 +542,57 @@ function draw_text(text, color, x, y)
     local py = (y - 1) * SCALE
     love.graphics.setColor(color)
     love.graphics.print(text, px + 4, py + 4)
+end
+
+
+function resize(a1, a2, b1, b2, x)
+    a3 = a2 - a1
+    b3 = b2 - b1
+    x = x - a1
+    x = x / a3
+    x = x * b3
+    x = x + b1
+    return x
+end
+
+function stereographic_projection(ax, ay, az)
+    local bx = ax / (1 - az)
+    local by = ay / (1 - az)
+    return bx, by
+end
+
+function polar_coordinates(phi, theta)
+    local a = math.sin(phi) / (1 - math.cos(phi))
+    local b = theta
+    return a, b
+end
+
+function polar_to_cartesian(r, theta)
+    local x = r * math.cos(theta)
+    local y = r * math.sin(theta)
+    return x, y
+end
+
+function spherical_to_cartesian(theta, phi)
+    local x = math.sin(theta) * math.cos(phi)
+    local z = math.sin(theta) * math.sin(phi)
+    local y = math.cos(theta)
+    return x, y, z
+end
+
+
+function point3d(ax, ay)
+    local bz = ay
+
+    local bx, by
+    if ax < 1 then
+        bx = ax / (1 - ay)
+        by = 1 - bx ^ 2 - bz ^ 2
+    else
+        bx = (2 - ax) / (1 - ay)
+        by = 1 - bx ^ 2 - bz ^ 2
+        by = -by
+    end
+    return bx, by, bz
 end
 
